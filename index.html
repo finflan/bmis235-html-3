@@ -38,7 +38,225 @@
      This box is empty on purpose. In Part 7 you paste an interactive
      graphic BETWEEN the opening <div> and the closing </div> below.
      ===================================================================== -->
-<div class="showcase"></div>
+<div class="showcase"><div class="sc-box">
+  <div class="sc-stage" role="group" aria-label="Roommate names. Select a name for a fun fact."></div>
+  <div class="sc-card" aria-live="polite">
+    <div class="sc-card-name">Catch a name</div>
+    <div class="sc-card-fact">Tap or click any name to learn something about them.</div>
+  </div>
+</div>
+
+<!-- CSS: every rule starts with .showcase so nothing else on your page changes -->
+<style>
+.showcase .sc-box {
+  --sc-main: #2b4b4b;
+  --sc-accent: #FED8B1;
+  --sc-ink: #14262b;
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  max-width: 760px;
+  height: 430px;
+  max-height: 85vh;
+  margin: 0 auto;
+  overflow: hidden;
+  border-radius: 18px;
+  background: var(--sc-main);
+  font-family: "Bernard MT Condensed", "Bernard MT", Impact, "Arial Narrow", sans-serif;
+  box-sizing: border-box;
+}
+.showcase .sc-box *,
+.showcase .sc-box *::before,
+.showcase .sc-box *::after {
+  box-sizing: border-box;
+}
+.showcase .sc-stage {
+  position: relative;
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow: hidden;
+  touch-action: manipulation;
+}
+.showcase .sc-name {
+  position: absolute;
+  top: 0;
+  left: 0;
+  margin: 0;
+  padding: 4px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  font: inherit;
+  font-size: clamp(2rem, 9vw, 3.4rem);
+  line-height: 1.1;
+  letter-spacing: 0.02em;
+  white-space: nowrap;
+  cursor: pointer;
+  will-change: transform;
+  -webkit-tap-highlight-color: transparent;
+}
+.showcase .sc-name:hover,
+.showcase .sc-name.sc-active {
+  background: rgba(255, 255, 255, 0.12);
+}
+.showcase .sc-name:focus-visible {
+  outline: 3px solid var(--sc-accent);
+  outline-offset: 2px;
+}
+.showcase .sc-letter {
+  display: inline-block;
+  transition: color 0.4s ease;
+}
+.showcase .sc-card {
+  flex: 0 0 auto;
+  min-height: 110px;
+  padding: 14px 20px 16px;
+  background: var(--sc-accent);
+  color: var(--sc-ink);
+}
+.showcase .sc-card-name {
+  font-size: 1.5rem;
+  line-height: 1.1;
+}
+.showcase .sc-card-fact {
+  margin-top: 6px;
+  font-family: Georgia, "Times New Roman", serif;
+  font-size: 1rem;
+  line-height: 1.4;
+}
+</style>
+
+<!-- JavaScript: makes the names bounce, colors the letters, and shows facts on click -->
+<script>
+(function () {
+  var box = document.querySelector(".showcase .sc-box");
+  if (!box) return;
+  var stage = box.querySelector(".sc-stage");
+  var cardName = box.querySelector(".sc-card-name");
+  var cardFact = box.querySelector(".sc-card-fact");
+
+  // EDIT HERE: swap in your roommates' real names and fun facts
+  var people = [
+    { name: "Andrew", facts: [
+      "Can name every cheese in the fridge by smell alone.",
+      "Once slept through a fire drill and woke up to a quiet hallway.",
+      "Keeps a secret playlist for doing dishes."
+    ] },
+    { name: "Wesley", facts: [
+      "Has never lost a game of rock paper scissors in this house.",
+      "Can fold a fitted sheet perfectly and won’t share the method.",
+      "Talks to the houseplants and swears they listen."
+    ] },
+    { name: "James", facts: [
+      "Makes pancakes at midnight whenever exams get close.",
+      "Owns three umbrellas and still gets rained on.",
+      "Knows every shortcut on campus."
+    ] }
+  ];
+
+  // Random main and accent colors on every page load
+  var h = Math.random() * 360;
+  box.style.setProperty("--sc-main", "hsl(" + h + ", 45%, 20%)");
+  box.style.setProperty("--sc-accent", "hsl(" + ((h + 140 + Math.random() * 80) % 360) + ", 85%, 78%)");
+  box.style.setProperty("--sc-ink", "hsl(" + h + ", 50%, 12%)");
+
+  function paint(el, offset) {
+    var letters = el.querySelectorAll(".sc-letter");
+    for (var i = 0; i < letters.length; i++) {
+      letters[i].style.color = "hsl(" + ((offset + i * (360 / (letters.length + 1))) % 360) + ", 95%, 65%)";
+    }
+  }
+
+  var still = window.matchMedia && window.matchMedia("(prefers-reduced-motion: reduce)").matches;
+  var items = [];
+  var active = null;
+
+  people.forEach(function (p, idx) {
+    var el = document.createElement("button");
+    el.type = "button";
+    el.className = "sc-name";
+    el.setAttribute("aria-label", p.name + ": show a fun fact");
+    p.name.split("").forEach(function (ch) {
+      var s = document.createElement("span");
+      s.className = "sc-letter";
+      s.setAttribute("aria-hidden", "true");
+      s.textContent = ch;
+      el.appendChild(s);
+    });
+    stage.appendChild(el);
+    paint(el, Math.random() * 360);
+
+    var angle = Math.random() * Math.PI * 2;
+    var speed = 0.8 + Math.random() * 0.7;
+    var it = {
+      el: el, p: p, factIndex: 0, paused: false,
+      x: 20 + idx * 90, y: 20 + idx * 60,
+      vx: still ? 0 : Math.cos(angle) * speed,
+      vy: still ? 0 : Math.sin(angle) * speed
+    };
+    if (!still && Math.abs(it.vx) < 0.4) it.vx = it.vx < 0 ? -0.5 : 0.5;
+    if (!still && Math.abs(it.vy) < 0.4) it.vy = it.vy < 0 ? -0.5 : 0.5;
+    items.push(it);
+
+    el.addEventListener("pointerenter", function () { it.paused = true; });
+    el.addEventListener("pointerleave", function () { it.paused = false; });
+    el.addEventListener("focus", function () { it.paused = true; });
+    el.addEventListener("blur", function () { it.paused = false; });
+    el.addEventListener("click", function () {
+      if (active) active.el.classList.remove("sc-active");
+      active = it;
+      el.classList.add("sc-active");
+      cardName.textContent = p.name;
+      cardFact.textContent = p.facts[it.factIndex % p.facts.length];
+      it.factIndex++;
+      paint(el, Math.random() * 360);
+    });
+  });
+
+  function place(it) {
+    it.el.style.transform = "translate(" + it.x + "px," + it.y + "px)";
+  }
+
+  // In reduced-motion mode, names sit in a tidy row instead of moving
+  function arrangeStill() {
+    var gap = stage.clientWidth / (items.length + 1);
+    items.forEach(function (it, i) {
+      it.x = Math.max(0, Math.min(stage.clientWidth - it.el.offsetWidth, gap * (i + 1) - it.el.offsetWidth / 2));
+      it.y = (stage.clientHeight - it.el.offsetHeight) / 2;
+      place(it);
+    });
+  }
+
+  var last = performance.now();
+  function frame(now) {
+    var dt = Math.min((now - last) / 16.67, 3);
+    last = now;
+    var w = stage.clientWidth;
+    var hgt = stage.clientHeight;
+    items.forEach(function (it) {
+      var maxX = Math.max(0, w - it.el.offsetWidth);
+      var maxY = Math.max(0, hgt - it.el.offsetHeight);
+      if (!it.paused) {
+        it.x += it.vx * dt;
+        it.y += it.vy * dt;
+      }
+      if (it.x <= 0) { it.x = 0; it.vx = Math.abs(it.vx); }
+      if (it.x >= maxX) { it.x = maxX; it.vx = -Math.abs(it.vx); }
+      if (it.y <= 0) { it.y = 0; it.vy = Math.abs(it.vy); }
+      if (it.y >= maxY) { it.y = maxY; it.vy = -Math.abs(it.vy); }
+      place(it);
+    });
+    requestAnimationFrame(frame);
+  }
+
+  if (still) {
+    arrangeStill();
+    window.addEventListener("resize", arrangeStill);
+  } else {
+    requestAnimationFrame(frame);
+  }
+})();
+</script></div>
 
 <!-- Footer: fill in your name -->
 <footer>Built by Finley Flanagan &middot; BMIS 235</footer>
